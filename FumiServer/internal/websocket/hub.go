@@ -24,12 +24,12 @@ func Run(h *Hub) {
 	for {
 		select {
 		case client := <-h.register:
-			h.clients[client.Id] = client
+			h.clients[client.id] = client
 			log.Println("User connected")
 
 		case client := <-h.unregister:
-			if _, ok := h.clients[client.Id]; ok {
-				delete(h.clients, client.Id)
+			if _, ok := h.clients[client.id]; ok {
+				delete(h.clients, client.id)
 				close(client.send)
 				log.Println("User disconnected")
 			}

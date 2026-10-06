@@ -28,7 +28,7 @@ func ConnectionHandeler(h *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{
-		Id:   userId,
+		id:   userId,
 		hub:  h,
 		conn: conn,
 		send: make(chan []byte, 256)}

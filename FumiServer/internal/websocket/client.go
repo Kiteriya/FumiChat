@@ -7,7 +7,7 @@ import (
 )
 
 type Client struct {
-	Id   string
+	id   string
 	hub  *Hub
 	conn *websocket.Conn
 	send chan []byte
@@ -35,7 +35,7 @@ func (c *Client) ReadPump() {
 		if err := json.Unmarshal(message, &msg); err != nil {
 			continue
 		}
-		msg.senderId = c.Id
+		msg.senderId = c.id
 		c.hub.route <- msg
 	}
 }
