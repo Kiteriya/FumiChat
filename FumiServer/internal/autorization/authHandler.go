@@ -4,7 +4,6 @@ import (
 	"FumiServer/internal/database"
 	"FumiServer/internal/models"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -26,10 +25,11 @@ func RegisterHandler(db *pgxpool.Pool, w http.ResponseWriter, r *http.Request) {
 		}
 
 		userId := uuid.NewV7()
-
 		hashPass, err := getHashPassword(u.Password)
 		if err != nil {
 			log.Printf("Failed to create hash password: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		udb := models.User{
@@ -40,29 +40,32 @@ func RegisterHandler(db *pgxpool.Pool, w http.ResponseWriter, r *http.Request) {
 		err = database.CreateUser(db, r.Context(), udb)
 		if err != nil {
 			log.Printf("Failed to record user: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+		w.WriteHeader(http.StatusCreated)
 	}
 }
 
-func LoginHandler(db *pgxpool.Pool, w http.ResponseWriter, r *http.Request) (string, error) {
+func LoginHandler(db *pgxpool.Pool, w http.ResponseWriter, r *http.Request) {
 	secretKey := os.Getenv("JWT_SECRET")
 	if secretKey == "" {
 		log.Printf("Failed to read JWT_SECRET from .env")
-		return "", errors.New("failed to read JWT_SECRET from .env")
+		return
 	}
 	var req models.AuthJson
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Printf("Failed to decode json: %v", err)
-		return "", err
+
 	}
-	userId, res := database.UserHashPassCompare(db, r, &req)
-	if res != nil {
-		return "", res
+	userId, err := database.UserHashPassCompare(db, r, &req)
+	if err != nil {
+		return
 	}
 	if userId == [16]byte{} {
-		return "", errors.New("failed to generate token for empty uuid")
+		return
 	}
 
 	claims := jwt.RegisteredClaims{
@@ -71,14 +74,25 @@ func LoginHandler(db *pgxpool.Pool, w http.ResponseWriter, r *http.Request) (str
 		Subject:   userId.String(),
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now())}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signToken, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		log.Printf("Failed to sign token: %v", err)
-		return "", err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	return signToken, err
 
+	response := models.AuthResponse{
+		JwtTOKEN: signToken,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Printf("Ошибка при отправке JSON: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func getHashPassword(password string) (string, error) {
