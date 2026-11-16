@@ -69,11 +69,9 @@ func LoginHandler(db *pgxpool.Pool, w http.ResponseWriter, r *http.Request) {
 	}
 
 	claims := jwt.RegisteredClaims{
-		ID:        uuid.New().String(),
+		ID:        userId.String(),
 		Issuer:    "FumiChat",
-		Subject:   userId.String(),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		IssuedAt:  jwt.NewNumericDate(time.Now())}
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour))}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signToken, err := token.SignedString([]byte(secretKey))

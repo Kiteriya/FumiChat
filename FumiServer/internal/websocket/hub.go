@@ -1,11 +1,13 @@
 package websocket
 
 import (
+	"FumiServer/internal/models"
+	"encoding/json"
 	"log"
 )
 
 type Hub struct {
-	route      chan Message
+	route      chan models.Message
 	clients    map[string]*Client
 	register   chan *Client
 	unregister chan *Client
@@ -13,7 +15,7 @@ type Hub struct {
 
 func NewHub() *Hub {
 	return &Hub{
-		route:      make(chan Message),
+		route:      make(chan models.Message),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[string]*Client),
@@ -33,6 +35,21 @@ func Run(h *Hub) {
 				close(client.send)
 				log.Println("User disconnected")
 			}
+
+		case message := <-h.route:
+			sendBytes, err := json.Marshal(message)
+			if err != nil {
+				log.Printf("Cant marshal json: %v", err)
+				continue
+			}
+
+			targetClient, ok := h.clients[message.TargetID]
+			if ok != false {
+				log.Printf("Failed to find client: %v", ok)
+				continue
+			}
+
+			targetClient.send <- sendBytes
 		}
 
 	}

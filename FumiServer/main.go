@@ -21,7 +21,8 @@ func main() {
 	go ws.Run(hub)
 
 	http.HandleFunc("/FumiServer/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.ConnectionHandeler(hub, w, r)
+		log.Print("Hello")
+		ws.ConnectionHandler(hub, w, r)
 	})
 
 	http.HandleFunc("/FumiServer/register", func(w http.ResponseWriter, r *http.Request) {
